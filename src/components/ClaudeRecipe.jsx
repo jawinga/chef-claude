@@ -6,11 +6,14 @@ const IngredientsList = ({ ingredients }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const getRecipe = async (ingredients) => {
-    const res = await fetch("http://localhost:3001/api/recipe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ingredients }),
-    });
+    const res = await fetch(
+      "https://chef-claude-bar3.onrender.com/api/recipe",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ingredients }),
+      }
+    );
 
     const data = await res.json();
     console.log("API response:", data); // ✅ Valid use
