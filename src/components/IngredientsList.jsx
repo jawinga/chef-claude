@@ -11,7 +11,7 @@ const IngredientsList = ({ ingredients, getRecipe, recipe, isLoading }) => {
         ))}
       </ul>
 
-      {ingredients.length > 3 && (
+      {ingredients.length >= 2 && (
         <div className="get-recipe-container">
           <div>
             <h3>Ready for a recipe?</h3>

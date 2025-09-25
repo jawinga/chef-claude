@@ -1,4 +1,5 @@
 import logo from "../assets/iconChef.png";
+import Toggle from "./Toggle";
 
 export default function Header() {
   return (
