@@ -13,8 +13,8 @@ const IngredientsList = ({ ingredients }) => {
     });
 
     const data = await res.json();
-    console.log("API response:", data); // ✅ Valid use
-    return data.recipe; // ✅ This works inside a function
+    console.log("API response:", data);
+    return data.recipe;
   };
 
   useEffect(() => {
