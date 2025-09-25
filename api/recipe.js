@@ -1,45 +1,70 @@
-import { Anthropic } from "@anthropic-ai/sdk";
+// api/recipe.js (Edge Function)
+export const config = { runtime: "edge" };
 
 const SYSTEM_PROMPT = `
-You are Chef Claude, a helpful cooking assistant. You receive a list of ingredients from the user and suggest one creative, delicious recipe...
+You are Chef Claude, a helpful cooking assistant...
+(keep your exact prompt here)
 `;
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
-
+export default async function handler(request) {
   try {
-    const { ingredients } = req.body ?? {};
-    if (!Array.isArray(ingredients) || ingredients.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "ingredients must be a non-empty array" });
+    if (request.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
+        status: 405,
+        headers: { "content-type": "application/json" },
+      });
     }
 
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+    const { ingredients } = await request.json();
+    if (!Array.isArray(ingredients) || ingredients.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "ingredients must be a non-empty array" }),
+        { status: 400, headers: { "content-type": "application/json" } }
+      );
+    }
+
+    const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-3-haiku-20240307",
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: [
+          {
+            role: "user",
+            content: `I have ${ingredients.join(
+              ", "
+            )}. Please give me a recipe you'd recommend I make!`,
+          },
+        ],
+      }),
     });
 
-    const msg = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: `I have ${ingredients.join(
-            ", "
-          )}. Please give me a recipe you'd recommend I make!`,
-        },
-      ],
-    });
+    if (!anthropicRes.ok) {
+      const errText = await anthropicRes.text();
+      return new Response(
+        JSON.stringify({ error: "Upstream error", detail: errText }),
+        { status: 502, headers: { "content-type": "application/json" } }
+      );
+    }
 
-    const text = msg?.content?.[0]?.text ?? "";
-    return res.status(200).json({ recipe: text });
-  } catch (err) {
-    console.error("API error:", err);
-    return res.status(500).json({ error: "Failed to generate recipe" });
+    const data = await anthropicRes.json();
+    const text =
+      (data && data.content && data.content[0] && data.content[0].text) || "";
+
+    return new Response(JSON.stringify({ recipe: text }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: "Server error" }), {
+      status: 500,
+      headers: { "content-type": "application/json" },
+    });
   }
 }
